@@ -21,7 +21,7 @@ export const Thumbnail = ({
 
   return (
     <figure className={cn("thumbnail", className)}>
-      <Image
+      <img
         src={isImage ? url : getFileIcon(extension, type)}
         alt="thumbnail"
         width={100}
