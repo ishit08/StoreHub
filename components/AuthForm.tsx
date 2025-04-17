@@ -47,7 +47,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
 
         try {
             const user = await createAccount({
-                fullName: values.username || "",
+                fullName: values.username || "", 
                 email: values.email,
             });
             setAccountId(user.accountId);
