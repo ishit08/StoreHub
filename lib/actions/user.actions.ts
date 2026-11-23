@@ -9,15 +9,15 @@ import { avatarPlaceholderUrl } from "@/constants";
 import { redirect } from "next/navigation";
 
 const getUserByEmail = async (email: string) => {
-  const { databases } = await createAdminClient();
+  const { tablesDB } = await createAdminClient();
 
-  const result = await databases.listDocuments(
+  const result = await tablesDB.listRows(
     appwriteConfig.databaseId,
     appwriteConfig.usersCollectionId,
     [Query.equal("email", [email])],
   );
 
-  return result.total > 0 ? result.documents[0] : null;
+  return result.total > 0 ? result.rows[0] : null;
 };
 
 const handleError = (error: unknown, message: string) => {
@@ -50,9 +50,9 @@ export const createAccount = async ({
   if (!accountId) throw new Error("Failed to send an OTP");
 
   if (!existingUser) {
-    const { databases } = await createAdminClient();
+    const { tablesDB } = await createAdminClient();
 
-    await databases.createDocument(
+    await tablesDB.createRow(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
       ID.unique(),
@@ -95,11 +95,11 @@ export const verifySecret = async ({
 
 export const getCurrentUser = async () => {
   try {
-    const { databases, account } = await createSessionClient();
+    const { tablesDB, account } = await createSessionClient();
 
     const result = await account.get();
 
-    const user = await databases.listDocuments(
+    const user = await tablesDB.listRows(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
       [Query.equal("accountId", result.$id)],
@@ -107,7 +107,7 @@ export const getCurrentUser = async () => {
 
     if (user.total <= 0) return null;
 
-    return parseStringify(user.documents[0]);
+    return parseStringify(user.rows[0]);
   } catch (error) {
     console.log(error);
   }

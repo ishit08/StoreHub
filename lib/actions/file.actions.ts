@@ -19,7 +19,7 @@ export const uploadFile = async ({
   accountId,
   path,
 }: UploadFileProps) => {
-  const { storage, databases } = await createAdminClient();
+  const { storage, tablesDB } = await createAdminClient();
 
   try {
     const inputFile = InputFile.fromBuffer(file, file.name);
@@ -42,8 +42,8 @@ export const uploadFile = async ({
       bucketFileId: bucketFile.$id,
     };
 
-    const newFile = await databases
-      .createDocument(
+    const newFile = await tablesDB
+      .createRow(
         appwriteConfig.databaseId,
         appwriteConfig.filesCollectionId,
         ID.unique(),
@@ -62,7 +62,7 @@ export const uploadFile = async ({
 };
 
 const createQueries = (
-  currentUser: Models.Document,
+  currentUser: Models.DefaultRow,
   types: string[],
   searchText: string,
   sort: string,
@@ -73,6 +73,8 @@ const createQueries = (
       Query.equal("owner", [currentUser.$id]),
       Query.contains("users", [currentUser.email]),
     ]),
+    // TablesDB only returns related rows when selected; cards read owner.fullName
+    Query.select(["*", "owner.*"]),
   ];
 
   if (types.length > 0) queries.push(Query.equal("type", types));
@@ -96,7 +98,7 @@ export const getFiles = async ({
   sort = "$createdAt-desc",
   limit,
 }: GetFilesProps) => {
-  const { databases } = await createAdminClient();
+  const { tablesDB } = await createAdminClient();
 
   try {
     const currentUser = await getCurrentUser();
@@ -105,7 +107,7 @@ export const getFiles = async ({
 
     const queries = createQueries(currentUser, types, searchText, sort, limit);
 
-    const files = await databases.listDocuments(
+    const files = await tablesDB.listRows(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
       queries,
@@ -124,11 +126,11 @@ export const renameFile = async ({
   extension,
   path,
 }: RenameFileProps) => {
-  const { databases } = await createAdminClient();
+  const { tablesDB } = await createAdminClient();
 
   try {
     const newName = `${name}.${extension}`;
-    const updatedFile = await databases.updateDocument(
+    const updatedFile = await tablesDB.updateRow(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
       fileId,
@@ -149,10 +151,10 @@ export const updateFileUsers = async ({
   emails,
   path,
 }: UpdateFileUsersProps) => {
-  const { databases } = await createAdminClient();
+  const { tablesDB } = await createAdminClient();
 
   try {
-    const updatedFile = await databases.updateDocument(
+    const updatedFile = await tablesDB.updateRow(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
       fileId,
@@ -173,10 +175,10 @@ export const deleteFile = async ({
   bucketFileId,
   path,
 }: DeleteFileProps) => {
-  const { databases, storage } = await createAdminClient();
+  const { tablesDB, storage } = await createAdminClient();
 
   try {
-    const deletedFile = await databases.deleteDocument(
+    const deletedFile = await tablesDB.deleteRow(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
       fileId,
@@ -196,11 +198,11 @@ export const deleteFile = async ({
 // ============================== TOTAL FILE SPACE USED
 export async function getTotalSpaceUsed() {
   try {
-    const { databases } = await createSessionClient();
+    const { tablesDB } = await createSessionClient();
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User is not authenticated.");
 
-    const files = await databases.listDocuments(
+    const files = await tablesDB.listRows(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
       [Query.equal("owner", [currentUser.$id])],
@@ -216,7 +218,7 @@ export async function getTotalSpaceUsed() {
       all: 2 * 1024 * 1024 * 1024 /* 2GB available bucket storage */,
     };
 
-    files.documents.forEach((file) => {
+    files.rows.forEach((file) => {
       const fileType = file.type as FileType;
       totalSpace[fileType].size += file.size;
       totalSpace.used += file.size;
